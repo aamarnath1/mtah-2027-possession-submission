@@ -1,0 +1,12 @@
+/data/
+/submissions/
+/.venv/
+__pycache__/
+*.pyc
+.env
+*.csv
+*.xml
+*.mp4
+*.npz
+*.parquet
+*_atd.txt
