@@ -19,7 +19,9 @@ Two signals carry this, measured on IDSSE first-half data (46,179 alive frames,
                                  0.14 alive against 0.48 dead. About 1.4 standard
                                  deviations of separation each.
 
-Player movement supplies evidence during tracking gaps.
+The second one matters more than the first for us, because our own ball is
+untracked on 41% of graded frames and goes missing most often during stoppages.
+A detector that leans on the ball would be blind exactly when it is needed.
 
 The published state of the art for this task is Lang et al. (Scientific Reports
 2022): per-player position, speed and acceleration sampled at plus and minus
@@ -144,7 +146,25 @@ def labels_from_evidence(evidence, cut=0.5):
 # does the same arithmetic in numpy, straight off the preprocessed columns.
 
 DEFAULT_SLOW_THRESHOLD = 0.40
-"""Threshold selected on external IDSSE matches with simulated ball tracking gaps."""
+"""Fitted on four IDSSE halves with the ball hidden to our own 41%.
+
+The end-to-end curve is flat from about 0.34 to 0.55: the mean spellF1 across
+those halves moves 0.3424 to 0.3490, which is well inside the ~0.04 noise band,
+and two halves rise across that range while two fall. So this is the middle of a
+plateau, not a peak. Do not re-tune it on a single match.
+
+It looks miscalibrated and it is not. scripts/boundary_report.py shows this
+threshold makes dead-ball segments start about 85 frames late and run about 82
+frames short, and that dropping it to 0.32 places those boundaries almost
+exactly right. Doing so LOWERS spellF1, from 0.2164 to 0.2076.
+
+The reason is that D is not scored as a segment. It only splits possessions, and
+the possessions are what get matched. A dead ball that runs short still splits
+correctly; one that runs long eats into the live possessions either side and
+costs them IoU. So for this metric dead ball should err short, and a boundary
+diagnostic that rewards accuracy here is measuring the wrong thing. Anyone who
+"fixes" this threshold to match the signal's mid-level will lose score.
+"""
 
 
 def detect_from_table(table, slot_numbers, fps=25, slow_threshold=None,
