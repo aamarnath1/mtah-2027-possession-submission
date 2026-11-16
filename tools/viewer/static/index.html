@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Match Viewer</title>
+  <link rel="stylesheet" href="/static/viewer.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Match Viewer <span class="sub">tactical video · tracking · predictions</span></h1>
+    <div class="label-pickers">
+      <label>Labels A <select id="labelsA"><option value="">none</option></select></label>
+      <label>Labels B <select id="labelsB"><option value="">none</option></select></label>
+      <button id="reloadLabels" title="Re-scan the label folders">↻</button>
+    </div>
+    <div class="toggles">
+      <label title="O"><input type="checkbox" id="tOverlay" checked> Overlay</label>
+      <label title="N"><input type="checkbox" id="tNumbers"> Slot #</label>
+      <label title="T"><input type="checkbox" id="tTrail" checked> Ball trail</label>
+      <label title="L"><input type="checkbox" id="tNearest" checked> Nearest</label>
+      <label title="P: show the Labels A prediction on the video and pitch"><input type="checkbox" id="tPrediction" checked> Prediction</label>
+      <button id="helpBtn" title="Keyboard shortcuts (?)">?</button>
+    </div>
+  </header>
+
+  <main class="views">
+    <section class="panel" id="videoPanel">
+      <div class="panel-title">Tactical video <span id="videoStatus" class="muted"></span></div>
+      <div class="stage" id="videoStage">
+        <video id="video" preload="auto" muted playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div id="noVideo" class="empty" hidden>
+          No video found. Put the MP4 at <code>data/raw/tactical/BAR-ATH_tactical.mp4</code>
+          or start the server with <code>--video &lt;path&gt;</code>. The pitch view still works.
+        </div>
+      </div>
+    </section>
+    <section class="panel" id="pitchPanel">
+      <div class="panel-title">Digital pitch <span id="pitchBadge" class="badge"></span></div>
+      <div class="stage" id="pitchStage"><canvas id="pitch"></canvas></div>
+    </section>
+  </main>
+
+  <section class="controls">
+    <button id="playBtn" title="Space">▶</button>
+    <button data-step="-250" title="↓  −10 s">−10s</button>
+    <button data-step="-25" title="Shift+←  −1 s">−1s</button>
+    <button data-step="-1" title="←  −1 frame">−1f</button>
+    <button data-step="1" title="→  +1 frame">+1f</button>
+    <button data-step="25" title="Shift+→  +1 s">+1s</button>
+    <button data-step="250" title="↑  +10 s">+10s</button>
+    <button id="prevSwitch" title=",  previous change in Labels A">⟨ change</button>
+    <button id="nextSwitch" title=".  next change in Labels A">change ⟩</button>
+    <label>Speed
+      <select id="speed">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option><option value="2">2×</option>
+        <option value="4">4×</option><option value="8">8×</option>
+      </select>
+    </label>
+    <label>Frame <input id="frameInput" type="number" min="0" step="1"></label>
+    <span id="clock" class="clock"></span>
+    <details class="settings">
+      <summary>Sync</summary>
+      <label title="Added to the video's frame index to get the data frame. Should be 0 for the tactical video.">
+        Video offset (frames) <input id="offset" type="number" value="0" step="1"></label>
+    </details>
+  </section>
+
+  <section class="timelines">
+    <div class="tl-head"><span>Whole match</span><span class="legend" id="legend"></span></div>
+    <canvas id="tlFull" class="timeline"></canvas>
+    <div class="tl-head"><span>Around the playhead <span class="muted">(±<span id="zoomSecs">30</span> s, scroll to zoom)</span></span></div>
+    <canvas id="tlZoom" class="timeline"></canvas>
+  </section>
+
+  <section class="info" id="info"></section>
+
+  <dialog id="help">
+    <h2>Keyboard shortcuts</h2>
+    <table>
+      <tr><td>Space</td><td>Play / pause</td></tr>
+      <tr><td>← / →</td><td>Back / forward 1 frame</td></tr>
+      <tr><td>Shift + ← / →</td><td>Back / forward 1 second</td></tr>
+      <tr><td>↓ / ↑</td><td>Back / forward 10 seconds</td></tr>
+      <tr><td>, / .</td><td>Previous / next change in Labels A</td></tr>
+      <tr><td>[ / ]</td><td>Slower / faster</td></tr>
+      <tr><td>O · N · T · L · P</td><td>Overlay · slot numbers · ball trail · nearest-player lines · prediction</td></tr>
+      <tr><td>G</td><td>Go to frame</td></tr>
+      <tr><td>Click / drag a timeline</td><td>Seek</td></tr>
+    </table>
+    <p class="muted">Frames are 0-based video frames, the same as submission rows.</p>
+    <form method="dialog"><button>Close</button></form>
+  </dialog>
+
+  <div id="loading" class="loading">Loading viewer data…</div>
+  <script src="/static/viewer.js"></script>
+</body>
+</html>

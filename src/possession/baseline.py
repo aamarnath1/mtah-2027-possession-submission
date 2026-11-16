@@ -8,14 +8,16 @@ is the whole point. The rules say that during loose or contested phases
 possession stays with the team that last had it, and changes only when the other
 team gains CONTROLLED possession. So "nearest player" is not an answer on its
 own. Here it is treated as evidence that only overturns the standing possession
-when it is sustained and unambiguous. When the ball is untracked, the previous
-label carries forward.
+when it is sustained and unambiguous. Anywhere the ball is untracked, which is
+about 41% of graded frames, it says nothing at all and the previous label carries
+forward, which is what the rules say happens anyway.
 
 Proper control detection, touch detection and dead-ball detection belong in their
 own modules and are somebody else's lane.
 """
 
 import json
+from collections.abc import Collection, Mapping
 
 from possession.labels import ABSTAIN, AWAY, HOME, N_FRAMES
 from possession.paths import CURRENT_DIR, current_file
@@ -107,7 +109,8 @@ def nearest_team_per_frame(frames_csv=None, slot_teams=None, table=None):
     return [lookup[int(v)] for v in best_team], best_d
 
 
-def sticky_labels(nearest, hold_frames=12):
+def sticky_labels(nearest: list[str | None], hold_frames: int = 12, *,
+                  restarts: Mapping[int, str] | None = None) -> list[str]:
     """Carry possession forward, switching only on a sustained disagreement.
 
     `hold_frames` is how long the other team must be nearest before we accept that
@@ -119,12 +122,21 @@ def sticky_labels(nearest, hold_frames=12):
     an unsmoothed read of a per-frame owning-team field, so it has no built-in
     lag, and a system that waits for confirmation before switching is late by
     exactly the amount it waited.
+
+    A detected restart sets the taking team at its frame and clears any pending
+    switch. Later changes still require the usual sustained evidence.
     """
     labels = [ABSTAIN] * len(nearest)
+    restarts = restarts or {}
     current = None
     streak_team, streak_start = None, None
 
     for i, team in enumerate(nearest):
+        if i in restarts:
+            current = restarts[i]
+            streak_team, streak_start = None, None
+            labels[i] = current
+            continue
         if team is not None:
             if current is None:
                 # Opening possession. Require the same hold as any other switch,
@@ -151,20 +163,23 @@ def sticky_labels(nearest, hold_frames=12):
             # No ball, so no opinion. A streak must be CONSECUTIVE OBSERVED
             # frames: without this reset the hold test measures an index span,
             # and one stray frame either side of a 15-second gap counts as a
-            # sustained lead.
+            # sustained lead. With the ball absent on 41% of frames in long
+            # blocks, that is the normal shape of a stoppage, not a rare case.
             streak_team, streak_start = None, None
         if labels[i] == ABSTAIN and current is not None:
             labels[i] = current
     return labels
 
 
-def place_switches_in_gaps(labels, nearest):
+def place_switches_in_gaps(labels: list[str], nearest: list[str | None], *,
+                           restart_frames: Collection[int] = ()) -> tuple[list[str], int]:
     """Move a hand-over that happened inside a ball gap to the gap's midpoint.
 
     Where the ball is untracked we have no evidence, so `sticky_labels` holds the
     standing possession and only switches once evidence returns. That puts the
     boundary at the END of the gap. If the turnover actually happened inside the
-    gap, the reported boundary is late.
+    gap, we are late by however long it lasted, and on this match the median gap
+    during live play runs about 10.7 seconds.
 
     Under a uniform prior on when the switch really happened, the midpoint
     minimizes expected absolute boundary error, which is the loss temporal IoU
@@ -172,6 +187,7 @@ def place_switches_in_gaps(labels, nearest):
 
     This only ever moves a boundary that already exists. It never creates one,
     which matters because a false switch costs about twice a missed one.
+    A detected restart at the first visible frame keeps that boundary.
     """
     out = list(labels)
     n = len(out)
@@ -185,7 +201,7 @@ def place_switches_in_gaps(labels, nearest):
         while i < n and nearest[i] is None:
             i += 1
         end = i - 1
-        if start == 0 or end == n - 1:
+        if start == 0 or end == n - 1 or i in restart_frames:
             continue                      # no evidence on one side: leave it alone
         before, after = out[start - 1], out[end + 1]
         if before == after or before == ABSTAIN or after == ABSTAIN:

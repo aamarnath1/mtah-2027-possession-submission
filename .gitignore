@@ -1,12 +1,23 @@
-/data/
-/submissions/
-/.venv/
+# Match data is licensed for the competition only: never commit it
+data/*
+!data/README.md
+*.mp4
+*_atd.txt
+*_atd.xml
+*_homography.csv
+*_smart_tagging.xml
+
+# Generated outputs
+submissions/*
+!submissions/.gitkeep
+*.parquet
+*.npz
+*.npy
+
+# Python / tooling
 __pycache__/
 *.pyc
+.venv/
+.ipynb_checkpoints/
+.DS_Store
 .env
-*.csv
-*.xml
-*.mp4
-*.npz
-*.parquet
-*_atd.txt

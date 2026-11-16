@@ -16,9 +16,19 @@ from local_guard import install
 
 
 def digest(path: Path) -> str:
-    """Calculate a streaming SHA-256 digest."""
+    """Calculate a streaming SHA-256 digest.
+
+    hashlib.file_digest only exists from Python 3.11. The fallback keeps the
+    rebuild runnable on older interpreters, which matters because the organizers
+    have to reproduce our submission on whatever they happen to have installed.
+    """
     with path.open("rb") as handle:
-        return hashlib.file_digest(handle, "sha256").hexdigest()
+        if hasattr(hashlib, "file_digest"):
+            return hashlib.file_digest(handle, "sha256").hexdigest()
+        running = hashlib.sha256()
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            running.update(block)
+        return running.hexdigest()
 
 
 def main() -> int:
